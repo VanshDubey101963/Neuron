@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
 from sklearn.datasets import load_digits
-from keras.api.models import Sequential
-from keras.api.layers import Dense
+from sklearn.model_selection import train_test_split
 
 class NeuralNetwork:
-    def __init__(self, max_iterations=1000):
+    def __init__(self, max_iterations=250):
         self.W1, self.W2, self.W3 , self.B1 , self.B2 , self.B3 = None,None,None,None,None,None
-        self.__learning_rate = 0.05
+        self.__learning_rate = 0.8
         self.max_iterations = max_iterations
 
     def __softmax(self, z):
@@ -23,13 +22,18 @@ class NeuralNetwork:
     def __dsoftmax(self, y_hat , y):
         return y_hat - y
     
+    def __cross_entropy(self, Y, A3):
+        m = Y.shape[1]
+        epsilon = 1e-8
+        loss = -np.sum(Y * np.log(A3 + epsilon)) / m
+        return loss
+    
     def initialize_params(self):
-
-        self.W1 = np.random.rand(32,64) 
+        self.W1 = np.random.randn(32, 64) * np.sqrt(1 / 64)
         self.B1 = np.zeros((32,1))  
-        self.W2 = np.random.rand(32,32)
+        self.W2 = np.random.randn(32, 32) * np.sqrt(1 / 32)
         self.B2 = np.zeros((32,1))
-        self.W3 = np.random.rand(10,32)
+        self.W3 = np.random.randn(10, 32) * np.sqrt(1 / 32)
         self.B3 = np.zeros((10,1))
 
     def forward_prop(self,X):
@@ -74,17 +78,18 @@ class NeuralNetwork:
         
 
     def fit(self,X_r,y):
-        X_r = X_r.T.reshape(64,-1)
+        X_r = X_r.T
         onehot_y = self.__onehot(y)
         self.initialize_params()
 
         for i in range(1,self.max_iterations + 1):
 
-            if i % 100 == 0 :
-                    print(f"Epoch {i} complete")
-
             A3, mem = self.forward_prop(X_r)
             dW1, db1 , dW2, db2, dW3, db3 = self.backward_prop(X_r, onehot_y,mem)
+
+
+            if i % 100 == 0 :
+                    print(f"Epoch {i} computed loss: {self.__cross_entropy(onehot_y,A3):2f}")
 
             self.W1 -= self.__learning_rate * dW1
             self.B1 -= self.__learning_rate * db1
@@ -108,9 +113,9 @@ X = digits.data / 16
 Y = digits.target
 Y = Y.astype(int)
 nn = NeuralNetwork()
-nn.fit(X,Y)
-prediction = nn.predict(X[2].T.reshape(64,-1))
-print(prediction)
-print(one_hot(Y[2]))
-print(one_hot(Y[2]).argmax())
-print(prediction.argmax())
+train_X , test_X , train_Y , test_Y = train_test_split(X,Y, test_size=0.2)
+nn.fit(train_X,train_Y)
+preds = nn.predict(test_X.T)
+pred_labels = np.argmax(preds, axis=0)
+accuracy = np.mean(pred_labels == test_Y)
+print(f"Training Accuracy: {accuracy * 100:.2f}%")
